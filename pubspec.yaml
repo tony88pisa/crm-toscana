@@ -1,0 +1,57 @@
+name: crm_toscana
+description: CRM per lead generation registratori di cassa in Toscana
+publish_to: 'none'
+version: 1.0.0+10
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Database locale
+  sqflite: ^2.4.2
+  path: ^1.9.0
+  path_provider: ^2.1.4
+
+  # Mappa (OpenStreetMap - gratuita)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # GPS e geolocalizzazione
+  geolocator: ^13.0.1
+
+  # Chiamate HTTP (Google Places API)
+  http: ^1.2.2
+
+  # Notifiche locali
+  flutter_local_notifications: ^18.0.0
+
+  # Permessi
+  permission_handler: ^11.3.1
+
+  # Condivisione file CSV
+  share_plus: ^10.0.0
+
+  # Formattazione date
+  intl: ^0.19.0
+
+  # Icone extra
+  cupertino_icons: ^1.0.8
+
+  # URL launcher (chiamate, WhatsApp, mappe)
+  url_launcher: ^6.2.5
+
+  # OTA Updater In-App
+  package_info_plus: ^8.0.0
+  dio: ^5.5.0
+  open_filex: ^4.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
