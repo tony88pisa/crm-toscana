@@ -1,7 +1,7 @@
 {
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v19/app-release.apk",
-    "sha256":  "89963034678488194E13717A65C8A167B2503585AAB290F1D65B7EDB3FEE0820",
-    "versionCode":  19,
-    "versionName":  "19",
-    "updateMessage":  "v19: Risolto bug Analisi AI non disponibile. (Scusate per l\u0027imprevisto!)"
+    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v20/app-release.apk",
+    "sha256":  "81F75F7E97E2C49CC7B7FCCA5636F5A340AA103FAAA27EA8F4A4F2FC4C0981FF",
+    "versionCode":  20,
+    "versionName":  "20",
+    "updateMessage":  "v20: Aggiornamenti OTA ora istantanei (bypass cache). Analisi AI ripristinata."
 }
