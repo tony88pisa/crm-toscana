@@ -1,6 +1,6 @@
 {
-    "versionName":  "12",
-    "versionCode":  12,
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v12/crm_v12.apk",
-    "updateMessage":  "NovitÃ  v12: Intelligenza Artificiale ricalibrata per pescare Botteghe, Bar, Ristoranti (anche in subentro) e scartare i grandi colossi e le catene."
+    "versionName": "13",
+    "versionCode": 13,
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v13/app-release.apk",
+    "updateMessage": "NovitÃ  v13: FIX Critico Download. Se continui ad avere errori, scarica manualmente da GitHub. Corretto l'errore di scaricamento della v12."
 }
