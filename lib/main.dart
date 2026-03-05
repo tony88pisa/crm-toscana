@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/location_service.dart';
+import 'services/updater_service.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -15,6 +16,7 @@ void main() async {
   ));
   
   await LocationService.instance.init();
+  await UpdaterService.initNotifications();
   runApp(const CrmToscanaApp());
 }
 

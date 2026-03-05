@@ -1,6 +1,6 @@
 {
-    "versionCode": 23,
-    "versionName": "1.0.0+23",
-    "updateMessage": "Ricaricata chiave AI (offuscata dai bot) e aggiunta regola per SCARTARE i negozi che sono GIÀ APERTI da mesi (es. gennaio).",
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v23/app-release.apk"
+    "versionCode": 24,
+    "versionName": "1.0.0+24",
+    "updateMessage": "Nuovo Sistema Notifiche: Aggiunta Campanella nella Dashboard e Notifiche Push locali per gli aggiornamenti.",
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v24/app-release.apk"
 }

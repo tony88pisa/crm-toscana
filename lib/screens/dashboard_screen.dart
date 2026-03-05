@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/prospect.dart';
 import '../services/updater_service.dart';
+import '../services/maps_service.dart';
+import 'changelog_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -16,14 +18,29 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic> _stats = {};
   bool _loading = true;
+  Map<String, dynamic>? _pendingUpdate;
 
   @override
   void initState() {
     super.initState();
     _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      UpdaterService.checkForUpdates(context);
-    });
+    _checkUpdates();
+  }
+
+  Future<void> _checkUpdates() async {
+    final update = await UpdaterService.fetchLatestUpdate();
+    if (update != null) {
+      if (mounted) {
+        setState(() {
+          _pendingUpdate = update;
+        });
+      }
+      // Trigger push notification simulation
+      await UpdaterService.triggerPushNotification(
+        'Aggiornamento Disponibile!',
+        'La versione ${update['versionName']} è pronta per il download. Clicca sulla campanella per installare.',
+      );
+    }
   }
 
   Future<void> _load() async {
@@ -37,6 +54,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
+          // NOTIFICATION BELL
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_none, size: 26),
+                if (_pendingUpdate != null)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 10,
+                        minHeight: 10,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: 'Notifiche',
+            onPressed: () {
+              if (_pendingUpdate != null) {
+                UpdaterService.showUpdateDialog(context, _pendingUpdate!);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nessuna notifica pendente.')),
+                );
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.history_edu, color: Colors.blueAccent),
+            tooltip: 'Novità & Aggiornamenti',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangelogScreen()));
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: _load),
         ],
       ),
@@ -49,6 +107,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   // ── KPI ──
                   _buildKpiRow(),
+                  const SizedBox(height: 12),
+
+                  // ── API Budget ──
+                  _buildApiCredits(),
                   const SizedBox(height: 12),
 
                   // ── Conversion Funnel ──
@@ -263,6 +325,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Text('$followUp', style: const TextStyle(
             color: Colors.orange, fontSize: 28, fontWeight: FontWeight.bold)),
       ]),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
+  // API CREDITS WIDGET
+  // ──────────────────────────────────────────────────────────────────────
+
+  Widget _buildApiCredits() {
+    return FutureBuilder<List<int>>(
+      future: Future.wait([
+        DatabaseHelper.instance.getApiUsageThisMonth(),
+        DatabaseHelper.instance.getAiUsageToday(),
+      ]),
+      builder: (context, snapshot) {
+        final placesUsed = snapshot.data?[0] ?? 0;
+        final aiUsed = snapshot.data?[1] ?? 0;
+        const placesMax = kMonthlyApiLimit;
+        const aiMax = 1000;
+
+        final placesPercent = (placesUsed / placesMax).clamp(0.0, 1.0);
+        final aiPercent = (aiUsed / aiMax).clamp(0.0, 1.0);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C2333),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(children: [
+                Icon(Icons.speed, color: Colors.blueAccent, size: 20),
+                SizedBox(width: 8),
+                Text('Budget API', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 16),
+
+              // Google Places
+              _apiBar(
+                label: '🗺️ Google Places',
+                used: placesUsed,
+                max: placesMax,
+                percent: placesPercent,
+                subtitle: 'Mensile (200 USD free tier)',
+              ),
+              const SizedBox(height: 12),
+
+              // Gemini AI
+              _apiBar(
+                label: '🧠 Gemini AI',
+                used: aiUsed,
+                max: aiMax,
+                percent: aiPercent,
+                subtitle: 'Giornaliero (reset ogni giorno)',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _apiBar({
+    required String label,
+    required int used,
+    required int max,
+    required double percent,
+    required String subtitle,
+  }) {
+    final color = percent > 0.8
+        ? Colors.redAccent
+        : percent > 0.5
+            ? Colors.orangeAccent
+            : const Color(0xFF4CAF50);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text('$used / $max', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percent,
+            backgroundColor: Colors.white10,
+            color: color,
+            minHeight: 8,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(subtitle, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+      ],
     );
   }
 }
