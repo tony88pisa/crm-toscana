@@ -1,7 +1,1 @@
-{
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v21/app-release.apk",
-    "sha256":  "04CD525BDA8AC96DBBBAEF9CCB7FF2F3156A5B7D3D603C83A53D93F5E488FD59",
-    "versionCode":  21,
-    "versionName":  "21",
-    "updateMessage":  "v21 (Lead Gen 2.0): Introdotto HR Scraper! Ora l\u0027app cerca chi assume personale per nuove aperture contattandoli mesi prima dell\u0027inaugurazione."
-}
+﻿{"version":"1.0.0+22","url":"https://github.com/tony88pisa/crm-toscana/releases/download/v22/app-release.apk","releaseNotes":"Risolto firmware AI con gemini-2.5-flash e riparato Scraper Subito.it"}
