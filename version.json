@@ -1,6 +1,6 @@
 {
-    "versionName": "11",
-    "versionCode": 11,
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v11/app-release.apk",
-    "updateMessage": "NovitÃ  v11: Aggiunta schermata Cronologia, ricerca rapida Google per trovare i titolari, intelligenza AI resa anti-errore!"
+    "versionName": "12",
+    "versionCode": 12,
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v12/app-release.apk",
+    "updateMessage": "NovitÃ  v12: Intelligenza Artificiale ricalibrata per pescare Botteghe, Bar, Ristoranti (anche in subentro) e scartare i grandi colossi e le catene."
 }
