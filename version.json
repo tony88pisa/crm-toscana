@@ -1,7 +1,7 @@
 {
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v20/app-release.apk",
-    "sha256":  "81F75F7E97E2C49CC7B7FCCA5636F5A340AA103FAAA27EA8F4A4F2FC4C0981FF",
-    "versionCode":  20,
-    "versionName":  "20",
-    "updateMessage":  "v20: Aggiornamenti OTA ora istantanei (bypass cache). Analisi AI ripristinata."
+    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v21/app-release.apk",
+    "sha256":  "04CD525BDA8AC96DBBBAEF9CCB7FF2F3156A5B7D3D603C83A53D93F5E488FD59",
+    "versionCode":  21,
+    "versionName":  "21",
+    "updateMessage":  "v21 (Lead Gen 2.0): Introdotto HR Scraper! Ora l\u0027app cerca chi assume personale per nuove aperture contattandoli mesi prima dell\u0027inaugurazione."
 }
