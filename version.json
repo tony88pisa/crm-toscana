@@ -1,7 +1,7 @@
 {
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v15/app-release.apk",
-    "sha256":  "B5267405B961A5FC962A8C05877B2A2B2BFAB824BB58FDE18027C02A3207F084",
-    "versionCode":  15,
-    "versionName":  "15",
-    "updateMessage":  "v15: AI Potenziata! Dashboard Budget API, ricerca contatti approfondita, keyword migliorate per trovare bar, negozi e subentri in anticipo."
+    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v16/app-release.apk",
+    "sha256":  "D9EAC3BD0040692BD3F4CD436FC51E94802DCC1A109C50BCCAA3C5C345C7E1E4",
+    "versionCode":  16,
+    "versionName":  "16",
+    "updateMessage":  "v16 Hotfix: risolto crash a fine download. Incluse feature v15 (Budget API, ricerca contatti AI, keyword migliorate)."
 }
