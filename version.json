@@ -1,6 +1,7 @@
 {
-    "versionName": "13",
-    "versionCode": 13,
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v13/app-release.apk",
-    "updateMessage": "NovitÃ  v13: FIX Critico Download. Se continui ad avere errori, scarica manualmente da GitHub. Corretto l'errore di scaricamento della v12."
+    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v14/app-release.apk",
+    "sha256":  "F7710390BEC8BE07F52CC56CF0F6079E4E1A8914C3C01CB225B38219A8071712",
+    "versionCode":  14,
+    "versionName":  "14",
+    "updateMessage":  "Novità v14: FIX DEFINITIVO OTA. Sistema professionale ricaricato. Se il download v13 falliva, scarica la v14 a mano questa volta e poi tutto sarà automatico."
 }
