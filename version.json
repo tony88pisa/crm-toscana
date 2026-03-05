@@ -1,7 +1,7 @@
 {
-    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v16/app-release.apk",
-    "sha256":  "D9EAC3BD0040692BD3F4CD436FC51E94802DCC1A109C50BCCAA3C5C345C7E1E4",
-    "versionCode":  16,
-    "versionName":  "16",
-    "updateMessage":  "v16 Hotfix: risolto crash a fine download. Incluse feature v15 (Budget API, ricerca contatti AI, keyword migliorate)."
+    "apkUrl":  "https://github.com/tony88pisa/crm-toscana/releases/download/v17/app-release.apk",
+    "sha256":  "425DF4957E5E48D31A5953EF906234BD4846BFCE9D871E9CD9630802D637132A",
+    "versionCode":  17,
+    "versionName":  "17",
+    "updateMessage":  "v17: Ricerche piu\u0027 fresche (max 90 giorni), ricerca contatti AI migliorata, OTA stabile."
 }
