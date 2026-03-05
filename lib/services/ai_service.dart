@@ -67,14 +67,24 @@ class AiService {
     required String province,
   }) async {
     try {
-      final prompt = '''Sei un assistente commerciale specializzato in piccole medie imprese B2B. Analizza questa notizia e chiediti: "Si tratta di un privato, una bottega, un bar, un ristorante, un artigiano o un negozietto che sta aprendo o ha appena aperto?". Ignora i colossi, Amazon, bandi, e appalti.
-Concentrati su aperture di veri locali fisici nella provincia di $province, Toscana.
+      final today = "Giovedì 5 Marzo 2026";
+      final prompt = '''Sei un Analista Commerciale Senior esperto in Lead Generation B2B. Oggi è $today.
+Analizza questa notizia della provincia di $province, Toscana.
+Obiettivo: trovare privati, botteghe, bar, ristoranti, pizzerie o negozietti che stanno aprendo, subentrando, cambiando gestione o assumendo. SCARTA i colossi, i bandi e gli eventi temporanei.
 
 NOTIZIA:
 Titolo: $title
 Descrizione: $description
 
-Rispondi **esclusivamente** con un blocco JSON singolo valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo), con questi campi:
+Rispondi **esclusivamente** con un blocco JSON valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo).
+
+RAGIONAMENTO TEMPORALE (Chain-of-Thought):
+1. Estrai tutte le menzioni di date o tempi (es: "19 gen", "prossimo mese", "inaugurato ieri").
+2. Confrontale con la data di oggi ($today).
+3. Se l'attività ha inaugurato o aperto più di 7-10 giorni fa (es. a Gennaio o Febbraio), l'urgenza è TASSATIVAMENTE "cold".
+4. Se l'attività apre nel futuro (Marzo, Aprile, estate 2026) o ha aperto negli ultimi 3-5 giorni, l'urgenza è "hot".
+
+JSON FORMAT:
 {
   "is_real_opening": true/false,
   "business_name": "nome esatto dell'attività",
@@ -83,7 +93,7 @@ Rispondi **esclusivamente** con un blocco JSON singolo valido, racchiuso in ```j
   "urgency": "hot/warm/cold",
   "timeframe": "quando apre (es: tra 1 mese, già aperto, inaugurato ieri)",
   "confidence": 0-100,
-  "reasoning": "spiegazione di 10 parole",
+  "reasoning": "spiegazione del ragionamento temporale (max 15 p)",
   "vat_number": "partita iva o ragione sociale completa (se presente)",
   "owner_name": "nome del titolare o chi assume (se presente)",
   "email": "indirizzo email (se presente)",
@@ -92,26 +102,18 @@ Rispondi **esclusivamente** con un blocco JSON singolo valido, racchiuso in ```j
 
 REGOLE PER ACCETTARE (is_real_opening = TRUE):
 1. Metti SEMPRE TRUE se è un bar, ristorante, osteria, negozio, pizzeria, artigiano, parrucchiere che apre o ri-apre.
-2. Metti TRUE se è una "nuova gestione", "subentro", "alza la saracinesca" o "rileva l'attività". A noi interessano i cambiamenti di partita IVA in questi locali!
-3. Metti TRUE se cercano personale (es: lavapiatti, banconista) per una "prossima apertura".
+2. Metti TRUE se è una "nuova gestione", "subentro" o "rileva l'attività".
+3. Metti TRUE se cercano personale per una "prossima apertura".
 
 REGOLE PER SCARTARE (is_real_opening = FALSE):
-1. Metti FALSE se è un supermercato Esselunga, Lidl, Coop, Conad o multinazionale.
-2. Metti FALSE se è una notizia di cronaca (furto, incidente, polemica).
-3. Metti FALSE se annuncia solo una "chiusura" o fallimento.
-4. Metti FALSE se è un evento, sagra di paese, concerto o mercato temporaneo.
+1. Metti FALSE se è un supermercato (Esselunga, Coop, ecc.) o multinazionale.
+2. Metti FALSE se è cronaca o annuncia una "chiusura definitiva".
+3. Metti FALSE se è un evento temporaneo (sagra, mercato).
 
 REGOLE per urgency:
-- "hot" = VERO OBIETTIVO: stanno cercando personale o aprendo A BREVE (nel futuro) o hanno aperto DA pochissimi GIORNI (es. "aprirà il prossimo mese", "inaugurazione questo weekend").
-- "warm" = notizia meno chiara o apertura avvenuta da qualche settimana, ma non troppo vecchia.
-- "cold" = notizia VECCHIA. Se l'articolo è di Gennaio/Febbraio e l'apertura è già avvenuta mesi fa (es "ha inaugurato a gennaio"), o peggio anni fa. A noi servono clienti nuovi da acquisire PRIMA che aprano!
-
-ATTENZIONE MASSIMA ALLE DATE:
-Se la descrizione contiene mesi passati (es. "aperto a Gennaio", "19 gen") ed è già aperto, METTI URGENCY "cold" e confidence più bassa. Non vogliamo attività vecchie!
-
-
-REGOLE per confidence:
-- Metti 80-100 se si parla chiaramente di negozio/bar/ristorante locale. Fìdati della notizia.''';
+- "hot" = VERO OBIETTIVO: stanno cercando personale o aprendo NEL FUTURO o negli ULTIMI 3-5 GIORNI.
+- "warm" = notizia meno chiara o apertura avvenuta da 1-2 settimane.
+- "cold" = NOTIZIA VECCHIA. Se l'articolo è di Gennaio/Febbraio (rispetto a oggi che è Marzo), metti "cold". A noi servono clienti nuovi da acquisire PRIMA che aprano!''';
 
       final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
       
@@ -159,13 +161,23 @@ REGOLE per confidence:
         '${e.key + 1}. Titolo: ${e.value['title']}\n   Descrizione: ${e.value['description']}'
       ).join('\n\n');
 
-      final prompt = '''Sei un assistente commerciale specializzato in piccole medie imprese. Analizza queste ${items.length} notizie della provincia di $province, Toscana.
-Obiettivo: trovare privati, botteghe, bar, ristoranti, pizzerie, o negozietti che stanno aprendo, subentrando, cambiando gestione o assumendo. SCARTA i colossi, i bandi e gli eventi temporanei.
+      final today = "Giovedì 5 Marzo 2026";
+      final prompt = '''Sei un Analista Commerciale Senior esperto in Lead Generation B2B. Oggi è $today.
+Analizza queste ${items.length} notizie della provincia di $province, Toscana.
+Obiettivo: trovare privati, botteghe, bar, ristoranti, pizzerie o negozietti che stanno aprendo, subentrando, cambiando gestione o assumendo. SCARTA i colossi, i bandi e gli eventi temporanei.
 
 NOTIZIE:
 $itemsText
 
-Rispondi **esclusivamente** con un blocco JSON array valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo). Per ogni notizia:
+Rispondi **esclusivamente** con un blocco JSON array valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo). 
+
+RAGIONAMENTO TEMPORALE (Chain-of-Thought) obbligatorio per ogni test:
+1. Identifica la data dell'evento (es: "19 gen", "aprile").
+2. Confrontala con Oggi ($today).
+3. Se l'evento è passato da oltre 10 giorni (es: un'apertura di Gennaio/Febbraio), l'urgenza è TASSATIVAMENTE "cold". Sii implacabile: a noi non servono lead "freddi" già aperti.
+4. "hot" = Apertura futura o avvenuta negli ultimi 3-5 giorni.
+
+JSON ARRAY FORMAT:
 [
   {
     "index": 1,
@@ -176,25 +188,25 @@ Rispondi **esclusivamente** con un blocco JSON array valido, racchiuso in ```jso
     "urgency": "hot/warm/cold",
     "timeframe": "quando apre",
     "confidence": 0-100,
-    "reasoning": "perché è/non è un'apertura (max 10 p)",
-    "vat_number": "partita iva o ragione sociale (se trovata)",
-    "owner_name": "nome titolare/gestore (se trovato)",
+    "reasoning": "spiegazione breve del ragionamento temporale (max 15 p)",
+    "vat_number": "partita iva (se trovata)",
+    "owner_name": "titolare (se trovato)",
     "email": "email (se trovata)",
     "extracted_phone": "telefono (se trovato)"
   }
 ]
 
 REGOLE IMPORTANTI per is_real_opening = TRUE:
-- TRUE se la notizia cita bar, negozio, artigiano, che APRE o è sotto una NUOVA GESTIONE.
-- SPECIFICO PER LAVORO/HR: Se il testo cita "cercasi personale", "assunzioni", "store manager" per un locale/azienda in vista di una nuova apertura (FUTURA), è SICURAMENTE un'apertura imminente (TRUE).
+- TRUE se cita bar, negozio, artigiano che APRE o cambia gestione.
+- SPECIFICO PER LAVORO/HR: Se il testo cita "cercasi personale" per una nuova apertura (FUTURA), è TRUE.
 
 REGOLE PER L'URGENZA (urgency):
-- "hot" = L'apertura è letteralmente IMAXINENTE O FUTURA (es. "aprirà ad aprile", "cercano personale per la prossima settimana"). Imposta Confidence 100.
-- "warm" = Apertura recente (ultime settimane).
-- "cold" = SCARTA LE NOTIZIE VECCHIE! Se l'articolo dice "ha inaugurato il 19 Gennaio" (mesi fa) o se è già aperto da tempo, metti "cold". A noi servono clienti nuovi da acquisire PRIMA che aprano la P.IVA, non mesi dopo!
+- "hot" = Apertura IMMINENTE O FUTURA (es. "aprirà ad aprile", "cercano personale per la prossima settimana").
+- "warm" = Apertura recente (ultime 1-2 settimane).
+- "cold" = NOTIZIA VECCHIA. Se dice "ha inaugurato il 19 Gennaio" (mesi fa), metti "cold".
 
 REGOLE per is_real_opening = FALSE:
-- FALSE se è cronaca (furti, multe), se è una "chiusura definitiva", se è GDO (Coop, Esselunga), o se cercano personale per agenzie di somministrazione generiche senza citare l'apertura in zona.''';
+- FALSE se è cronaca, chiusura, GDO (Coop, Esselunga) o agenzie interinali generiche.''';
 
 
       final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';

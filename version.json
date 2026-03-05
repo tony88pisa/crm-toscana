@@ -1,6 +1,6 @@
 {
-    "versionCode": 24,
-    "versionName": "1.0.0+24",
-    "updateMessage": "Nuovo Sistema Notifiche: Aggiunta Campanella nella Dashboard e Notifiche Push locali per gli aggiornamenti.",
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v24/app-release.apk"
+    "versionCode": 25,
+    "versionName": "1.0.0+25",
+    "updateMessage": "Lancio 'Veridica AI': Sistema di Intelligenza Temporale che scarta le notizie vecchie (es. Gennaio) e si focalizza solo su Marzo/Aprile 2026.",
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v25/app-release.apk"
 }
