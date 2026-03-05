@@ -1,1 +1,6 @@
-﻿{"version":"1.0.0+22","url":"https://github.com/tony88pisa/crm-toscana/releases/download/v22/app-release.apk","releaseNotes":"Risolto firmware AI con gemini-2.5-flash e riparato Scraper Subito.it"}
+﻿{
+    "versionCode": 22,
+    "versionName": "1.0.0+22",
+    "updateMessage": "Risolto errore Analisi AI con limite Token. Ottimizzato scraper Subito.it. AI abilitata su Nuove Aperture vere.",
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v22/app-release.apk"
+}
