@@ -55,8 +55,8 @@ class AiAnalysis {
 
 class AiService {
   // Gemini API - 1000 req/giorno GRATIS con Flash-Lite
-  static const _apiKey = 'AIzaSyDoUAZcmCUFUrI3lCbHONcwH9YZxkVVBsY';
-  static const _model = 'gemini-2.0-flash-lite';
+  static const _apiKey = 'AIzaSyCnXKNX30iWrwAPOdJBRqQ0pguShqclbO4';
+  static const _model = 'gemini-2.5-flash';
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   /// Analizza un risultato di ricerca con AI per determinare
@@ -67,47 +67,47 @@ class AiService {
     required String province,
   }) async {
     try {
-      final prompt = '''Sei un analista commerciale spietato e preciso. Il tuo compito è filtrare i falsi positivi. Analizza questa notizia e determina se riguarda una VERA, NUOVA e IMMINENTE (o appena avvenuta) APERTURA di un'attività commerciale (negozio, ristorante, ecc) nella provincia di $province, Toscana.
+      final prompt = '''Sei un assistente commerciale specializzato in piccole medie imprese B2B. Analizza questa notizia e chiediti: "Si tratta di un privato, una bottega, un bar, un ristorante, un artigiano o un negozietto che sta aprendo o ha appena aperto?". Ignora i colossi, Amazon, bandi, e appalti.
+Concentrati su aperture di veri locali fisici nella provincia di $province, Toscana.
 
 NOTIZIA:
 Titolo: $title
 Descrizione: $description
 
-Rispondi SOLO in formato JSON valido (niente markdown, niente ```), con questi campi:
+Rispondi **esclusivamente** con un blocco JSON singolo valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo), con questi campi:
 {
   "is_real_opening": true/false,
   "business_name": "nome esatto dell'attività",
-  "business_type": "tipo (ristorante/bar/negozio/farmacia/ecc.)",
+  "business_type": "tipo (es: ristorante, bar, negozio, parrucchiere, bottega)",
   "location": "indirizzo esatto o città menzionata",
   "urgency": "hot/warm/cold",
-  "timeframe": "quando apre (es: tra 1 mese, già aperto, data specifica)",
+  "timeframe": "quando apre (es: tra 1 mese, già aperto, inaugurato ieri)",
   "confidence": 0-100,
-  "reasoning": "spiegazione di MASSIMO 10 parole del perché è o non è una nuova apertura",
-  "vat_number": "partita iva o ragione sociale completa (se presente, altrimenti stringa vuota)",
-  "owner_name": "nome del titolare o referente o chi assume (se presente, altrimenti stringa vuota)",
-  "email": "indirizzo email per CV o contatti (se presente, altrimenti stringa vuota)",
-  "extracted_phone": "numero di telefono o cellulare (se presente, altrimenti stringa vuota)"
+  "reasoning": "spiegazione di 10 parole",
+  "vat_number": "partita iva o ragione sociale completa (se presente)",
+  "owner_name": "nome del titolare o chi assume (se presente)",
+  "email": "indirizzo email (se presente)",
+  "extracted_phone": "numero di telefono (se presente)"
 }
 
-REGOLE TASSATIVE per is_real_opening = FALSE (FALSO POSITIVO - SII PARANOICO):
-1. Se è una RECENSIONE di un locale già aperto da molto tempo -> FALSE
-2. Se è un EVENTO temporaneo, una sagra, fiera, mercato -> FALSE
-3. Se annuncia una CHIUSURA, un fallimento, o una vendita d'azienda -> FALSE
-4. Se è un annuncio di LAVORO generico per un posto GIA' APERTO -> FALSE
-5. Se è cronaca nera, polemica, furto o incidente -> FALSE
-6. Se cita "anniversario", "storico locale", "riapre dopo i lavori", "riapertura estiva", "restyling" -> FALSE (Hanno già i fornitori e le casse)
-7. Se NON parla di una VERA, NUOVA e IMMINENTE apertura fisica B2C -> FALSE
+REGOLE PER ACCETTARE (is_real_opening = TRUE):
+1. Metti SEMPRE TRUE se è un bar, ristorante, osteria, negozio, pizzeria, artigiano, parrucchiere che apre o ri-apre.
+2. Metti TRUE se è una "nuova gestione", "subentro", "alza la saracinesca" o "rileva l'attività". A noi interessano i cambiamenti di partita IVA in questi locali!
+3. Metti TRUE se cercano personale (es: lavapiatti, banconista) per una "prossima apertura".
 
-Devi mettere TRUE SOLO SE c'è prova concreta che un LOCALE FISICO TOTALMENTE NUOVO sta aprendo, ha appena aperto, o aprirà a breve.
+REGOLE PER SCARTARE (is_real_opening = FALSE):
+1. Metti FALSE se è un supermercato Esselunga, Lidl, Coop, Conad o multinazionale.
+2. Metti FALSE se è una notizia di cronaca (furto, incidente, polemica).
+3. Metti FALSE se annuncia solo una "chiusura" o fallimento.
+4. Metti FALSE se è un evento, sagra di paese, concerto o mercato temporaneo.
 
 REGOLE per urgency:
-- "hot" = apre tra 2+ settimane o cerca personale in vista di un'apertura (vero target)
-- "warm" = apre tra 1-2 settimane
-- "cold" = già aperto, inaugurato nei giorni scorsi
+- "hot" = VERO OBIETTIVO: stanno aprendo, subentrando, inaugurando o cercano personale in vista di un'apertura a breve o appena avvenuta.
+- "warm" = notizia meno chiara ma sembra un'attività recente.
+- "cold" = notizia chiaramente vecchia di mesi o anni.
 
 REGOLE per confidence:
-- 90-100 se c'è nome, via esatta e data di un'attività ineffettivamente nuova.
-- <50 se è dubbio o potrebbe essere un restyling.''';
+- Metti 80-100 se si parla chiaramente di negozio/bar/ristorante locale. Fìdati della notizia.''';
 
       final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
       
@@ -118,7 +118,8 @@ REGOLE per confidence:
           'contents': [{'parts': [{'text': prompt}]}],
           'generationConfig': {
             'temperature': 0.2,
-            'maxOutputTokens': 300,
+            'maxOutputTokens': 1500,
+            'responseMimeType': 'application/json',
           },
         }),
       ).timeout(const Duration(seconds: 15));
@@ -130,9 +131,13 @@ REGOLE per confidence:
       final data = jsonDecode(response.body);
       final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
       
+      // Log per eventuale debug
+      print("Gemini Raw Response: $text");
+      
       // Estrai il JSON dalla risposta
       return _parseAiResponse(text);
     } catch (e) {
+      print("Gemini Analysis Error (Single): $e");
       return AiAnalysis.notAvailable();
     }
   }
@@ -149,34 +154,38 @@ REGOLE per confidence:
         '${e.key + 1}. Titolo: ${e.value['title']}\n   Descrizione: ${e.value['description']}'
       ).join('\n\n');
 
-      final prompt = '''Sei un analista commerciale spietato. Analizza queste ${items.length} notizie e per OGNUNA determina se riguarda una VERA e NUOVA APERTURA di attività commerciale (negozio/ristorante/ecc) nella provincia di $province, Toscana. SCARTA TUTTI i falsi positivi (recensioni di vecchi locali, eventi, sagre, cronaca, chiusure).
+      final prompt = '''Sei un assistente commerciale specializzato in piccole medie imprese. Analizza queste ${items.length} notizie della provincia di $province, Toscana.
+Obiettivo: trovare privati, botteghe, bar, ristoranti, pizzerie, o negozietti che stanno aprendo, subentrando, cambiando gestione o assumendo. SCARTA i colossi, i bandi e gli eventi temporanei.
 
 NOTIZIE:
 $itemsText
 
-Rispondi SOLO con un array JSON valido (niente markdown, niente \`\`\`). Per ogni notizia:
+Rispondi **esclusivamente** con un blocco JSON array valido, racchiuso in ```json ... ``` (nessun altro testo prima o dopo). Per ogni notizia:
 [
   {
     "index": 1,
     "is_real_opening": true/false,
     "business_name": "nome",
-    "business_type": "tipo",
+    "business_type": "tipo (bar/negozio/ecc)",
     "location": "indirizzo/zona",
     "urgency": "hot/warm/cold",
-    "timeframe": "quando apre/ha aperto",
+    "timeframe": "quando apre",
     "confidence": 0-100,
-    "reasoning": "perché è/non è un'apertura (max 10 parole)",
+    "reasoning": "perché è/non è un'apertura (max 10 p)",
     "vat_number": "partita iva o ragione sociale (se trovata)",
-    "owner_name": "nome titolare/referente (se trovato)",
+    "owner_name": "nome titolare/gestore (se trovato)",
     "email": "email (se trovata)",
     "extracted_phone": "telefono (se trovato)"
   }
 ]
 
-REGOLE RIGIDE PARANOICHE per is_real_opening = FALSE:
-- is_real_opening = FALSE se: recensione vecchio locale, evento/sagra, chiusura, furto, annuncio lavoro per posto esistente, "storico", "restyling", "rinnovo locali", "riapertura estiva", "anniversario".
-- is_real_opening = TRUE SOLO SE: nuovo locale fisico, startup da zero, subentro totale.
-- URGENCY: hot=cerca personale per futura apertura o apre tra 2+ sett, warm=1-2 sett, cold=già aperto.''';
+REGOLE IMPORTANTI per is_real_opening = TRUE:
+- TRUE se la notizia cita bar, negozio, artigiano, che APRE o è sotto una NUOVA GESTIONE.
+- SPECIFICO PER LAVORO/HR: Se il testo cita "cercasi personale", "assunzioni", "store manager" per un locale/azienda, è SICURAMENTE un'apertura imminente (TRUE). Imposta Urgenza HOT e Confidence 100.
+- Imposta Urgenza HOT e Confidence alta (80-100) per i locali fisici B2C.
+
+REGOLE per is_real_opening = FALSE:
+- FALSE se è cronaca (furti, multe), se è una "chiusura definitiva", se è GDO (Coop, Esselunga), o se cercano personale per agenzie di somministrazione generiche senza citare l'apertura in zona.''';
 
       final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
 
@@ -187,20 +196,25 @@ REGOLE RIGIDE PARANOICHE per is_real_opening = FALSE:
           'contents': [{'parts': [{'text': prompt}]}],
           'generationConfig': {
             'temperature': 0.2,
-            'maxOutputTokens': 800,
+            'maxOutputTokens': 8192,
+            'responseMimeType': 'application/json',
           },
         }),
       ).timeout(const Duration(seconds: 25));
 
       if (response.statusCode != 200) {
+        print("Gemini API Error (Batch): ${response.statusCode} - ${response.body}");
         return List.generate(items.length, (_) => AiAnalysis.notAvailable());
       }
 
       final data = jsonDecode(response.body);
       final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
       
+      print("Gemini Raw Batch Response: $text");
+      
       return _parseBatchResponse(text, items.length);
     } catch (e) {
+      print("Gemini Analysis Error (Batch): $e");
       return List.generate(items.length, (_) => AiAnalysis.notAvailable());
     }
   }
@@ -257,10 +271,12 @@ REGOLE RIGIDE PARANOICHE per is_real_opening = FALSE:
     }
   }
 
-  /// Estrai JSON da una risposta che potrebbe contenere altro testo
+  /// Estrai JSON da una risposta che potrebbe contenere altro testo (Resilienza Migliorata)
   static String _extractJson(String text) {
-    // Rimuovi markdown code blocks
-    text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+    if (text.isEmpty) return '{}';
+
+    // Rimuovi markdown code blocks specifici
+    text = text.replaceAll(RegExp(r'```json\n?'), '').replaceAll(RegExp(r'```\n?'), '').trim();
     
     // Trova array JSON
     final arrayStart = text.indexOf('[');
@@ -269,7 +285,7 @@ REGOLE RIGIDE PARANOICHE per is_real_opening = FALSE:
       return text.substring(arrayStart, arrayEnd + 1);
     }
     
-    // Trova object JSON
+    // Trova object JSON (Fallback)
     final objStart = text.indexOf('{');
     final objEnd = text.lastIndexOf('}');
     if (objStart != -1 && objEnd > objStart) {
@@ -277,5 +293,110 @@ REGOLE RIGIDE PARANOICHE per is_real_opening = FALSE:
     }
     
     return text;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DEEP CONTACT SEARCH — Cerca telefono e titolare tramite AI
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, String?>> deepSearchContact({
+    required String businessName,
+    required String city,
+    required String province,
+  }) async {
+    try {
+      final prompt = '''Sei un assistente commerciale. Devi trovare il NUMERO DI TELEFONO e il NOME DEL TITOLARE/PROPRIETARIO dell'attività seguente:
+
+Attività: $businessName
+Città: $city
+Provincia: $province, Toscana, Italia
+
+Rispondi SOLO con un blocco JSON:
+```json
+{
+  "phone": "numero di telefono (formato +39 xxx xxxxxxx, o null se non lo sai)",
+  "owner_name": "nome e cognome del titolare (o null se non lo sai)",
+  "email": "email dell'attività (o null se non la sai)",
+  "source_hint": "dove pensi si possa trovare (es: PagineGialle, Google Maps, sito web)"
+}
+```
+Se non conosci un dato, metti null. Non inventare mai numeri o nomi.''';
+
+      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{'parts': [{'text': prompt}]}],
+          'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 200},
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) return {};
+
+      final data = jsonDecode(response.body);
+      final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+      final jsonStr = _extractJson(text);
+      final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
+      
+      return {
+        'phone': parsed['phone']?.toString(),
+        'owner_name': parsed['owner_name']?.toString(),
+        'email': parsed['email']?.toString(),
+        'source_hint': parsed['source_hint']?.toString(),
+      };
+    } catch (e) {
+      print("Deep Contact Search Error: $e");
+      return {};
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VERIFY BUSINESS STATUS — Verifica se un'attività è realmente aperta
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> verifyBusinessStatus({
+    required String businessName,
+    required String address,
+    required String province,
+  }) async {
+    try {
+      final prompt = '''Sei un analista di mercato locale. Verifica se l'attività seguente è effettivamente APERTA e OPERANTE:
+
+Attività: $businessName
+Indirizzo: $address
+Provincia: $province, Toscana
+
+Rispondi SOLO con un blocco JSON:
+```json
+{
+  "is_likely_open": true/false,
+  "confidence": 0-100,
+  "last_activity_signal": "descrizione breve dell'ultimo segnale di attività noto",
+  "business_category": "tipo di attività (bar, ristorante, negozio, ecc)",
+  "notes": "eventuali note utili per un venditore di registratori di cassa"
+}
+```''';
+
+      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{'parts': [{'text': prompt}]}],
+          'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 200},
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) return {'is_likely_open': false, 'confidence': 0};
+
+      final data = jsonDecode(response.body);
+      final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+      final jsonStr = _extractJson(text);
+      return jsonDecode(jsonStr) as Map<String, dynamic>;
+    } catch (e) {
+      print("Verify Business Error: $e");
+      return {'is_likely_open': false, 'confidence': 0};
+    }
   }
 }
