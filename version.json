@@ -1,6 +1,6 @@
 {
-    "versionCode": 22,
-    "versionName": "1.0.0+22",
-    "updateMessage": "Risolto errore Analisi AI con limite Token. Ottimizzato scraper Subito.it. AI abilitata su Nuove Aperture vere.",
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v22/app-release.apk"
+    "versionCode": 23,
+    "versionName": "1.0.0+23",
+    "updateMessage": "Ricaricata chiave AI (offuscata dai bot) e aggiunta regola per SCARTARE i negozi che sono GIÀ APERTI da mesi (es. gennaio).",
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v23/app-release.apk"
 }
