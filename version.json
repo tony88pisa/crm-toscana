@@ -1,6 +1,6 @@
 {
-    "versionCode": 26,
-    "versionName": "1.0.0+26",
-    "updateMessage": "Supporto Multi-Utente: Aggiunto Google Login e possibilità per ogni utente di inserire la propria Gemini API Key gratuita nelle impostazioni.",
-    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v26/app-release.apk"
+    "versionCode": 27,
+    "versionName": "1.0.0+27",
+    "updateMessage": "Fix Accesso: Aggiunta opzione per entrare senza Google (Ospite) se il login normale fallisce. Risolto errore PlatformException.",
+    "apkUrl": "https://github.com/tony88pisa/crm-toscana/releases/download/v27/app-release.apk"
 }

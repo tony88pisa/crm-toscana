@@ -106,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
               
               if (_loading)
                 const CircularProgressIndicator(color: Colors.green)
-              else
+              else ...[
                 ElevatedButton(
                   onPressed: _handleSignIn,
                   style: ElevatedButton.styleFrom(
@@ -137,8 +137,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _showGuestLoginDialog,
+                  child: Text(
+                    'Entra come ospite (senza Google)',
+                    style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  ),
+                ),
+              ],
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               Text(
                 'Usa il tuo account aziendale per accedere.',
                 style: TextStyle(
@@ -149,6 +158,57 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showGuestLoginDialog() {
+    final nomeController = TextEditingController();
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2333),
+        title: const Text('Accesso Rapido'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nomeController,
+              decoration: const InputDecoration(labelText: 'Il tuo Nome'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(labelText: 'La tua Email'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nomeController.text.isNotEmpty && emailController.text.isNotEmpty) {
+                await StorageService.saveUserLogin(
+                  name: nomeController.text.trim(),
+                  email: emailController.text.trim(),
+                );
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+            child: const Text('Entra'),
+          ),
+        ],
       ),
     );
   }
