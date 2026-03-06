@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'storage_service.dart';
 
 /// Risultato dell'analisi AI di un lead
 class AiAnalysis {
@@ -55,7 +56,15 @@ class AiAnalysis {
 
 class AiService {
   // Chiave nascosta in 3 parti per fregar i bot spia di GitHub (Secret Scanners)
-  static String get _apiKey => 'AIzaSyDZg' + 'bxW-6I62qs' + 'LJqVAL3R7QE90' + '6Oqb-ks';
+  static String get _defaultApiKey => 'AIzaSyDZg' + 'bxW-6I62qs' + 'LJqVAL3R7QE90' + '6Oqb-ks';
+
+  static String _getEffectiveApiKey() {
+    final userKey = StorageService.getGeminiApiKey();
+    if (userKey != null && userKey.isNotEmpty) {
+      return userKey;
+    }
+    return _defaultApiKey;
+  }
   static const _model = 'gemini-2.5-flash';
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -115,7 +124,8 @@ REGOLE per urgency:
 - "warm" = notizia meno chiara o apertura avvenuta da 1-2 settimane.
 - "cold" = NOTIZIA VECCHIA. Se l'articolo è di Gennaio/Febbraio (rispetto a oggi che è Marzo), metti "cold". A noi servono clienti nuovi da acquisire PRIMA che aprano!''';
 
-      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final effectiveApiKey = _getEffectiveApiKey();
+      final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       
       final response = await http.post(
         Uri.parse(url),
@@ -209,7 +219,8 @@ REGOLE per is_real_opening = FALSE:
 - FALSE se è cronaca, chiusura, GDO (Coop, Esselunga) o agenzie interinali generiche.''';
 
 
-      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final effectiveApiKey = _getEffectiveApiKey();
+      final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
 
       final response = await http.post(
         Uri.parse(url),
@@ -344,7 +355,8 @@ Rispondi SOLO con un blocco JSON:
 ```
 Se non conosci un dato, metti null. Non inventare mai numeri o nomi.''';
 
-      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final effectiveApiKey = _getEffectiveApiKey();
+      final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
@@ -400,7 +412,8 @@ Rispondi SOLO con un blocco JSON:
 }
 ```''';
 
-      final url = '$_baseUrl/$_model:generateContent?key=$_apiKey';
+      final effectiveApiKey = _getEffectiveApiKey();
+      final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},

@@ -6,6 +6,8 @@ import '../models/prospect.dart';
 import '../services/updater_service.dart';
 import '../services/maps_service.dart';
 import 'changelog_screen.dart';
+import 'settings_screen.dart';
+import '../services/storage_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onRefresh;
@@ -86,6 +88,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SnackBar(content: Text('Nessuna notifica pendente.')),
                 );
               }
+            },
+          ),
+          IconButton(
+            icon: CircleAvatar(
+              radius: 12,
+              backgroundColor: Colors.green.withOpacity(0.2),
+              backgroundImage: StorageService.getUserAvatar() != null 
+                  ? NetworkImage(StorageService.getUserAvatar()!) 
+                  : null,
+              child: StorageService.getUserAvatar() == null 
+                  ? const Icon(Icons.person, size: 16, color: Colors.green) 
+                  : null,
+            ),
+            tooltip: 'Impostazioni',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen()));
             },
           ),
           IconButton(

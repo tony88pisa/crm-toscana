@@ -1,7 +1,7 @@
 name: crm_toscana
 description: CRM per lead generation registratori di cassa in Toscana
 publish_to: 'none'
-version: 1.0.0+25
+version: 1.0.0+26
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -46,6 +46,10 @@ dependencies:
   # OTA Updater In-App
   package_info_plus: ^8.0.0
   open_filex: ^4.5.3
+
+  # Autenticazione e Storage
+  google_sign_in: ^6.2.1
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

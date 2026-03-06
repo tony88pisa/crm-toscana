@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/location_service.dart';
 import 'services/updater_service.dart';
+import 'services/storage_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,7 @@ void main() async {
   
   await LocationService.instance.init();
   await UpdaterService.initNotifications();
+  await StorageService.init();
   runApp(const CrmToscanaApp());
 }
 
@@ -29,7 +32,7 @@ class CrmToscanaApp extends StatelessWidget {
       title: 'CRM Toscana',
       debugShowCheckedModeBanner: false,
       theme: _buildDarkTheme(),
-      home: const HomeScreen(),
+      home: StorageService.isLoggedIn() ? const HomeScreen() : const LoginScreen(),
     );
   }
 
