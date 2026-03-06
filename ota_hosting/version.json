@@ -1,0 +1,7 @@
+{
+    "versionCode": 33,
+    "versionName": "1.0.0+33",
+    "updateMessage": "v33: Stable Static OTA (Vercel). Addio loop aggiornamenti! 🛡️🚀",
+    "apkUrl": "./app-release.apk",
+    "tracking": "[PATCH v33 | 2026-03-06 11:35] Stable Static OTA Migration."
+}

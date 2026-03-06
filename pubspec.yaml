@@ -1,11 +1,11 @@
 name: crm_toscana
 description: CRM per lead generation registratori di cassa in Toscana
 publish_to: 'none'
-# [PATCH v32 | 2026-03-06 09:50]
-# WHAT: Bumped version to 1.0.0+32.
-# WHY: Sync with GitHub automation to fix the "manual download" issue and OTA loop.
+# [PATCH v33 | 2026-03-06 11:35]
+# WHAT: Bumped version to 1.0.0+33.
+# WHY: Sync with the new Stable Static OTA flow.
 # AUTH: Antigravity AI
-version: 1.0.0+32
+version: 1.0.0+33
 
 environment:
   sdk: '>=3.2.0 <4.0.0'

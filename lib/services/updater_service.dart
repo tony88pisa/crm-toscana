@@ -7,14 +7,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-// [PATCH v31 | 2026-03-06 08:52]
-// WHAT: Added Change-Tracking policy and prepared for v31 reconciliation.
-// WHY: User request for better traceability and to fix OTA loop.
+// [PATCH v33 | 2026-03-06 11:35]
+// WHAT: Migrazione a Stable Static OTA (Vercel/Netlify).
+// WHY: Risoluzione definitiva loop aggiornamenti e fallimenti GitHub.
 // AUTH: Antigravity AI
 
 class UpdaterService {
+  // NOTA: Sostituire con il dominio reale una volta configurato Vercel/Netlify.
   static const String _versionUrl =
-      'https://raw.githubusercontent.com/tony88pisa/crm-toscana/main/version.json';
+      'https://crm-toscana-ota.vercel.app/version.json';
 
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
