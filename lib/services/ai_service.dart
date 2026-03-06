@@ -54,16 +54,31 @@ class AiAnalysis {
   );
 }
 
-class AiService {
-  // Chiave nascosta in 3 parti per fregar i bot spia di GitHub (Secret Scanners)
-  static String get _defaultApiKey => 'AIzaSyDZg' + 'bxW-6I62qs' + 'LJqVAL3R7QE90' + '6Oqb-ks';
+class UserApiKeyMissingException implements Exception {
+  final String message = "API Key Gemini non impostata nelle Impostazioni.";
+  @override
+  String toString() => message;
+}
 
-  static String _getEffectiveApiKey() {
+class AiService {
+  static String? _getEffectiveApiKey() {
     final userKey = StorageService.getGeminiApiKey();
     if (userKey != null && userKey.isNotEmpty) {
       return userKey;
     }
-    return _defaultApiKey;
+    return null;
+  }
+
+  static void _updateQuota(Map<String, dynamic> data) {
+    try {
+      final usage = data['usageMetadata'];
+      if (usage != null) {
+        final total = usage['totalTokenCount'] ?? 0;
+        StorageService.recordUsage(total is int ? total : int.parse(total.toString()));
+      }
+    } catch (e) {
+      debugPrint("Quota Update Error: $e");
+    }
   }
   static const _model = 'gemini-2.5-flash';
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -125,6 +140,8 @@ REGOLE per urgency:
 - "cold" = NOTIZIA VECCHIA. Se l'articolo è di Gennaio/Febbraio (rispetto a oggi che è Marzo), metti "cold". A noi servono clienti nuovi da acquisire PRIMA che aprano!''';
 
       final effectiveApiKey = _getEffectiveApiKey();
+      if (effectiveApiKey == null) throw UserApiKeyMissingException();
+
       final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       
       final response = await http.post(
@@ -141,11 +158,12 @@ REGOLE per urgency:
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        print("Gemini API Error (Single): ${response.statusCode} - ${response.body}");
-        return AiAnalysis.notAvailable();
+        throw Exception("Gemini Error: ${response.statusCode}");
       }
 
       final data = jsonDecode(response.body);
+      _updateQuota(data);
+
       final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
       
       // Log per eventuale debug
@@ -220,6 +238,8 @@ REGOLE per is_real_opening = FALSE:
 
 
       final effectiveApiKey = _getEffectiveApiKey();
+      if (effectiveApiKey == null) throw UserApiKeyMissingException();
+
       final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
 
       final response = await http.post(
@@ -236,11 +256,12 @@ REGOLE per is_real_opening = FALSE:
       ).timeout(const Duration(seconds: 25));
 
       if (response.statusCode != 200) {
-        print("Gemini API Error (Batch): ${response.statusCode} - ${response.body}");
-        return List.generate(items.length, (_) => AiAnalysis.notAvailable());
+        throw Exception("Gemini Batch Error: ${response.statusCode}");
       }
 
       final data = jsonDecode(response.body);
+      _updateQuota(data);
+
       final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
       
       print("Gemini Raw Batch Response: $text");
@@ -356,6 +377,8 @@ Rispondi SOLO con un blocco JSON:
 Se non conosci un dato, metti null. Non inventare mai numeri o nomi.''';
 
       final effectiveApiKey = _getEffectiveApiKey();
+      if (effectiveApiKey == null) throw UserApiKeyMissingException();
+
       final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       final response = await http.post(
         Uri.parse(url),
@@ -366,9 +389,11 @@ Se non conosci un dato, metti null. Non inventare mai numeri o nomi.''';
         }),
       ).timeout(const Duration(seconds: 12));
 
-      if (response.statusCode != 200) return {};
+      if (response.statusCode != 200) throw Exception("Search Error");
 
       final data = jsonDecode(response.body);
+      _updateQuota(data);
+
       final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
       final jsonStr = _extractJson(text);
       final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -413,6 +438,8 @@ Rispondi SOLO con un blocco JSON:
 ```''';
 
       final effectiveApiKey = _getEffectiveApiKey();
+      if (effectiveApiKey == null) throw UserApiKeyMissingException();
+
       final url = '$_baseUrl/$_model:generateContent?key=$effectiveApiKey';
       final response = await http.post(
         Uri.parse(url),
@@ -422,6 +449,13 @@ Rispondi SOLO con un blocco JSON:
           'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 200},
         }),
       ).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) throw Exception("Verify Error");
+
+      final data = jsonDecode(response.body);
+      _updateQuota(data);
+
+      final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
 
       if (response.statusCode != 200) return {'is_likely_open': false, 'confidence': 0};
 

@@ -102,8 +102,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : null,
             ),
             tooltip: 'Impostazioni',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen()));
+            onPressed: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen()));
+              setState(() {}); // Refresh quota al ritorno
             },
           ),
           IconButton(
@@ -123,6 +124,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(12),
                 children: [
+                  // ── Real-Time Quota Banner ──
+                  _buildQuotaBanner(),
+                  const SizedBox(height: 12),
+
                   // ── KPI ──
                   _buildKpiRow(),
                   const SizedBox(height: 12),
@@ -351,19 +356,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ──────────────────────────────────────────────────────────────────────
 
   Widget _buildApiCredits() {
-    return FutureBuilder<List<int>>(
-      future: Future.wait([
-        DatabaseHelper.instance.getApiUsageThisMonth(),
-        DatabaseHelper.instance.getAiUsageToday(),
-      ]),
+    final quota = StorageService.getQuotaStats();
+    
+    return FutureBuilder<int>(
+      future: DatabaseHelper.instance.getApiUsageThisMonth(),
       builder: (context, snapshot) {
-        final placesUsed = snapshot.data?[0] ?? 0;
-        final aiUsed = snapshot.data?[1] ?? 0;
+        final placesUsed = snapshot.data ?? 0;
+        final aiTokensUsed = quota['tokens'] ?? 0;
+        final aiRequestsUsed = quota['requests'] ?? 0;
+        
         const placesMax = kMonthlyApiLimit;
-        const aiMax = 1000;
+        const tokensMax = 500000; // Esempio: 500k token al giorno free
+        const requestsMax = 15;   // RPM free tier
 
         final placesPercent = (placesUsed / placesMax).clamp(0.0, 1.0);
-        final aiPercent = (aiUsed / aiMax).clamp(0.0, 1.0);
+        final tokenPercent = (aiTokensUsed / tokensMax).clamp(0.0, 1.0);
+        final requestPercent = (aiRequestsUsed / requestsMax).clamp(0.0, 1.0);
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -378,7 +386,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Row(children: [
                 Icon(Icons.speed, color: Colors.blueAccent, size: 20),
                 SizedBox(width: 8),
-                Text('Budget API', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Budget API & Quota', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               ]),
               const SizedBox(height: 16),
 
@@ -388,17 +396,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 used: placesUsed,
                 max: placesMax,
                 percent: placesPercent,
-                subtitle: 'Mensile (200 USD free tier)',
+                subtitle: 'Google Maps (Mensile)',
+              ),
+              const SizedBox(height: 16),
+
+              // Gemini AI Tokens
+              _apiBar(
+                label: '🧠 Gemini Tokens',
+                used: aiTokensUsed,
+                max: tokensMax,
+                percent: tokenPercent,
+                subtitle: 'Utilizzo odierno approssimativo',
               ),
               const SizedBox(height: 12),
-
-              // Gemini AI
+              
+              // Gemini Requests (RPM)
               _apiBar(
-                label: '🧠 Gemini AI',
-                used: aiUsed,
-                max: aiMax,
-                percent: aiPercent,
-                subtitle: 'Giornaliero (reset ogni giorno)',
+                label: '⚡ Richieste AI',
+                used: aiRequestsUsed,
+                max: requestsMax,
+                percent: requestPercent,
+                subtitle: 'Limite velocità (15 richieste/min)',
+                colorOverride: aiRequestsUsed > 12 ? Colors.redAccent : null,
               ),
             ],
           ),
@@ -413,12 +432,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required int max,
     required double percent,
     required String subtitle,
+    Color? colorOverride,
   }) {
-    final color = percent > 0.8
+    final color = colorOverride ?? (percent > 0.8
         ? Colors.redAccent
         : percent > 0.5
             ? Colors.orangeAccent
-            : const Color(0xFF4CAF50);
+            : const Color(0xFF4CAF50));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -443,6 +463,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 2),
         Text(subtitle, style: const TextStyle(color: Colors.white24, fontSize: 10)),
       ],
+    );
+  }
+
+  Widget _buildQuotaBanner() {
+    final quota = StorageService.getQuotaStats();
+    final tokens = quota['tokens'] ?? 0;
+    final requests = quota['requests'] ?? 0;
+    
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.token, color: Colors.amber, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Quota Gemini Personale', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('Token oggi: $tokens | Richieste: $requests/15 min',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ),
+          Text(
+            '${(tokens/500000*100).toStringAsFixed(1)}%',
+            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }

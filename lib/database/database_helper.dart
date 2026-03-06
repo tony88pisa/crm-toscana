@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -97,6 +97,16 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_place_id ON prospects(google_place_id)');
     await db.execute('CREATE INDEX idx_urgency ON prospects(urgency)');
     await db.execute('CREATE INDEX idx_log_prospect ON contact_log(prospect_id)');
+
+    // v7: AI usage tracking giornaliero
+    await db.execute('''
+      CREATE TABLE ai_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day TEXT NOT NULL,
+        call_count INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(day)
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -153,6 +163,18 @@ class DatabaseHelper {
       try { await db.execute('ALTER TABLE prospects ADD COLUMN email TEXT'); } catch (_) {}
       try { await db.execute('ALTER TABLE prospects ADD COLUMN extracted_phone TEXT'); } catch (_) {}
     }
+    if (oldVersion < 7) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS ai_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            day TEXT NOT NULL,
+            call_count INTEGER NOT NULL DEFAULT 0,
+            UNIQUE(day)
+          )
+        ''');
+      } catch (_) {}
+    }
   }
 
   // ─── API USAGE ──────────────────────────────────────────────────────────────
@@ -176,6 +198,29 @@ class DatabaseHelper {
   String _currentMonth() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
+  // ─── AI USAGE (GIORNALIERO) ─────────────────────────────────────────────────
+
+  Future<int> getAiUsageToday() async {
+    final db = await database;
+    final day = _currentDay();
+    final r = await db.query('ai_usage', where: 'day = ?', whereArgs: [day]);
+    return r.isEmpty ? 0 : r.first['call_count'] as int;
+  }
+
+  Future<void> incrementAiUsage([int count = 1]) async {
+    final db = await database;
+    final day = _currentDay();
+    await db.rawInsert('''
+      INSERT INTO ai_usage (day, call_count) VALUES (?, ?)
+      ON CONFLICT(day) DO UPDATE SET call_count = call_count + ?
+    ''', [day, count, count]);
+  }
+
+  String _currentDay() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   // ─── INSERT ────────────────────────────────────────────────────────────────

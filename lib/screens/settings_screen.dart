@@ -138,7 +138,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Salva API Key'),
             ),
             
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
+            _buildUsageCard(),
+            const SizedBox(height: 30),
             
             // GUIDA API KEY
             Container(
@@ -208,6 +210,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildUsageCard() {
+    final stats = StorageService.getQuotaStats();
+    final tokens = stats['tokens'] ?? 0;
+    final requests = stats['requests'] ?? 0;
+    final tokenLimit = 500000;
+    final tokenPercent = (tokens / tokenLimit).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.analytics_outlined, color: Colors.amber),
+              SizedBox(width: 10),
+              Text(
+                'Monitoraggio Quota (Oggi)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _usageRow('Token consumati:', '$tokens', tokenPercent),
+          const SizedBox(height: 15),
+          _usageRow('Richieste effettuate:', '$requests / 15 RPM', (requests / 15).clamp(0.0, 1.0)),
+        ],
+      ),
+    );
+  }
+
+  Widget _usageRow(String label, String value, double percent) {
+    final color = percent > 0.8 ? Colors.redAccent : (percent > 0.5 ? Colors.orangeAccent : Colors.green);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: LinearProgressIndicator(
+            value: percent,
+            backgroundColor: Colors.white.withOpacity(0.1),
+            color: color,
+            minHeight: 6,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,6 +5,10 @@ import '../database/database_helper.dart';
 import '../services/maps_service.dart';
 import '../models/prospect.dart';
 
+import '../services/storage_service.dart';
+import '../services/ai_service.dart';
+import 'settings_screen.dart';
+
 class SearchScreen extends StatefulWidget {
   final VoidCallback? onNewProspects;
   const SearchScreen({super.key, this.onNewProspects});
@@ -100,11 +104,44 @@ class _SearchScreenState extends State<SearchScreen>
 
       widget.onNewProspects?.call();
     } catch (e) {
-      setState(() {
-        _errorMsg = e.toString().replaceFirst('Exception: ', '');
-        _loading = false;
-      });
+      if (e is UserApiKeyMissingException) {
+        _showKeyMissingDialog();
+      } else {
+        setState(() {
+          _errorMsg = e.toString().replaceFirst('Exception: ', '');
+          _loading = false;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showKeyMissingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2333),
+        title: const Text('API Key Mancante'),
+        content: const Text(
+          'Per analizzare i lead con l\'AI, ogni collega deve inserire la propria Gemini API Key gratuita nelle impostazioni.\n\nVuoi andare alle impostazioni ora?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen())).then((_) => setState(() {}));
+            },
+            child: const Text('Vai alle Impostazioni'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -115,6 +152,8 @@ class _SearchScreenState extends State<SearchScreen>
       appBar: AppBar(
         title: const Text('🔍 Nuove Aperture'),
         actions: [
+          _buildGeminiBadge(),
+          const SizedBox(width: 8),
           _buildApiBadge(),
           const SizedBox(width: 8),
         ],
@@ -170,11 +209,37 @@ class _SearchScreenState extends State<SearchScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.api, size: 14, color: color),
+          Icon(Icons.map, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
             '$_apiRemaining',
             style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeminiBadge() {
+    final stats = StorageService.getQuotaStats();
+    final tokens = stats['tokens'] ?? 0;
+    const color = Colors.amber;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.token, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '${(tokens/1000).toStringAsFixed(1)}k',
+            style: const TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ],
       ),

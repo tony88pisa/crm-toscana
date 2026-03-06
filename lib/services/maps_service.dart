@@ -10,10 +10,11 @@ import 'package:http/http.dart' as http;
 import '../models/prospect.dart';
 import '../database/database_helper.dart';
 import 'ai_service.dart';
+import 'hr_scraper_service.dart';
 
 // ─── CONFIGURAZIONE ────────────────────────────────────────────────────────
 const String kGoogleApiKey = 'AIzaSyDoUAZcmCUFUrI3lCbHONcwH9YZxkVVBsY';
-const int kMonthlyApiLimit = 9500;
+const int kMonthlyApiLimit = 5800;  // $200 free tier / $0.035 per Text Search call
 
 // ─── PROVINCE TOSCANE ──────────────────────────────────────────────────────
 const Map<String, _ProvinceBias> kProvince = {
@@ -31,13 +32,13 @@ const Map<String, _ProvinceBias> kProvince = {
 
 // ─── TIPI DI ATTIVITÀ ─────────────────────────────────────────────────────
 const Map<String, List<String>> kBusinessTypes = {
-  'Ristoranti & Bar':        ['ristorante', 'bar', 'pizzeria', 'trattoria', 'pub', 'locale'],
-  'Negozi al dettaglio':     ['negozio', 'bottega', 'shop', 'store', 'punto vendita'],
+  'Ristoranti & Bar':        ['ristorante', 'bar', 'pizzeria', 'trattoria', 'osteria', 'pub', 'locale'],
+  'Negozi al dettaglio':     ['negozio', 'bottega', 'shop', 'store', 'punto vendita', 'privato'],
   'Parrucchieri & Estetica': ['parrucchiere', 'estetista', 'salone', 'barbiere', 'beauty'],
-  'Artigiani & Servizi':     ['officina', 'artigiano', 'laboratorio', 'studio'],
-  'Supermercati':            ['supermercato', 'alimentari', 'minimarket', 'discount'],
+  'Artigiani & Servizi':     ['officina', 'artigiano', 'laboratorio', 'studio', 'riparazioni'],
+  'Supermercati':            ['minimarket', 'alimentari', 'gastronomia', 'forno', 'panificio'],
   'Farmacie':                ['farmacia', 'parafarmacia'],
-  'Tutte le attività':       ['attività', 'negozio', 'esercizio', 'locale commerciale'],
+  'Tutte le attività':       ['attività', 'negozio', 'esercizio', 'locale commerciale', 'bottega'],
 };
 
 class _ProvinceBias {
@@ -67,11 +68,16 @@ const _openingKeywords = [
   'nuova apertura', 'nuove aperture', 'apre', 'aprirà', 'ha aperto',
   'inaugurazione', 'inaugurato', 'inaugurazione di', 'taglio del nastro',
   'nuovo negozio', 'nuovo ristorante', 'nuovo bar', 'nuovo locale',
-  'nuova attività', 'nuova impresa', 'nuova sede',
+  'nuova attività', 'nuova gestione', 'subentro', 'cambio gestione',
+  'alza la saracinesca', 'riapre', 'leva l\'ancora',
   'apertura', 'scia', 'inizio attività', 'avvio attività',
   'aperto al pubblico', 'apre i battenti', 'prima apertura',
   'partita iva', 'registrazione impresa', 'nuova partita iva',
   'iscrizione camera di commercio', 'comunicazione apertura',
+  // v15: keyword addizionali per accuracy
+  'apre un nuovo', 'inaugurato il', 'presto arriverà', 'lavori in corso per',
+  'assunzioni per apertura', 'cercasi personale per nuovo',
+  'rileva l\'attività', 'nuovo punto vendita',
 ];
 
 // Keyword NEGATIVE — escludere risultati che le contengono
@@ -79,13 +85,14 @@ const _excludeKeywords = [
   'chiude', 'chiusura', 'fallimento', 'fallito', 'sequestro',
   'vendita attività', 'cessione', 'cessazione', 'in vendita',
   'rischia la chiusura', 'crisi', 'licenziamento',
-  // GDO — escludere grande distribuzione (non nostri clienti)
+  // GDO E PUBBLICO — escludere roba corporate e comuni
   'coop', 'conad', 'esselunga', 'lidl', 'eurospin', 'carrefour',
   'penny market', 'despar', 'md discount', 'aldi', 'pam', 'sigma',
   'simply', 'iper', 'bennet', 'mediaworld', 'unieuro', 'leroy merlin',
   'ikea', 'decathlon', 'primark', 'zara', 'h&m', 'mcdonald',
   'burger king', 'starbucks', 'kfc', 'autogrill', 'eni station',
-  'amazon', 'centro commerciale',
+  'amazon', 'centro commerciale', 'bando', 'appalto', 'comune di', 'provincia di',
+  'municipio', 'bando di gara', 'concorso pubblico', 'post e-commerce'
 ];
 
 // ─── SERVICE ───────────────────────────────────────────────────────────────
@@ -239,6 +246,58 @@ class MapsService {
       detail: '${aiValidated.length} lead verificati dall\'AI!',
     ));
 
+    // ═══ STEP 2b: DEEP CONTACT ENRICHMENT (AI) ══════════════════════════════
+    // Per lead senza telefono, chiediamo a Gemini di cercarlo
+    final aiDailyUsed = await DatabaseHelper.instance.getAiUsageToday();
+    final aiDailyBudget = 1000;
+    int aiCallsInStep = 0;
+
+    for (int i = 0; i < aiValidated.length; i++) {
+      final p = aiValidated[i];
+      // Controlla se manca il telefono (incluso il caso 'null' come stringa)
+      final noPhone = p.phone == null || p.phone!.isEmpty || p.phone == 'null';
+      final noExtPhone = p.extractedPhone == null || p.extractedPhone!.isEmpty || p.extractedPhone == 'null';
+      if (noPhone && noExtPhone && aiDailyUsed + aiCallsInStep < aiDailyBudget - 50) {
+        onProgress?.call(SearchProgress(
+          step: 3, stepName: '🔍 Ricerca Contatti',
+          found: uniqueLeads.length, verified: aiValidated.length,
+          detail: 'Cerco telefono per ${p.name}…',
+        ));
+
+        final contactData = await AiService.deepSearchContact(
+          businessName: p.name,
+          city: p.address,
+          province: province,
+        );
+        aiCallsInStep++;
+        await DatabaseHelper.instance.incrementAiUsage();
+
+        // Filtra valori 'null' restituiti da Gemini come stringhe
+        final phone = _cleanNullStr(contactData['phone']);
+        final ownerName = _cleanNullStr(contactData['owner_name']);
+        final email = _cleanNullStr(contactData['email']);
+
+        if (phone != null || ownerName != null || email != null) {
+          aiValidated[i] = Prospect(
+            id: p.id, name: p.name, address: p.address,
+            phone: phone ?? p.phone,
+            website: p.website, lat: p.lat, lng: p.lng,
+            province: p.province, businessType: p.businessType,
+            source: p.source, sourceUrl: p.sourceUrl,
+            verified: p.verified, googlePlaceId: p.googlePlaceId,
+            confidenceScore: p.confidenceScore,
+            urgency: p.urgency, estimatedOpenDate: p.estimatedOpenDate,
+            notes: p.notes,
+            vatNumber: p.vatNumber,
+            ownerName: ownerName ?? p.ownerName,
+            email: email ?? p.email,
+            extractedPhone: phone ?? p.extractedPhone,
+          );
+        }
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+
     return aiValidated;
   }
 
@@ -353,17 +412,18 @@ class MapsService {
 
     // Query molto precise e diversificate
     final queries = <String>[
-      // Query specifiche per apertura
+      // Query specifiche per apertura B2B
       '"nuova apertura" "${keywords.first}" "$province"',
-      '"inaugurazione" "${keywords.first}" "$province" 2026',
+      '"nuova gestione" "${keywords.first}" "$province"',
+      '"alza la saracinesca" "$province" 2026',
       '"apre" "nuovo ${keywords.first}" "$province"',
-      '"nuova attività" "$province" Toscana 2026',
+      '"nuova attività" "negozio" "$province" Toscana',
       // Query per SCIA e partita IVA
       '"SCIA" "apertura" "$province" 2026',
-      '"nuova partita iva" "$province" ${keywords.first}',
+      '"nuova partita iva" "bottega" "$province"',
       '"registrazione" "impresa" "$province" "apertura"',
       // Query locali con varianti
-      '"apre i battenti" "$province"',
+      '"apre i battenti" "negozio" "$province"',
       '"taglio del nastro" "$province" 2026',
     ];
 
@@ -376,7 +436,7 @@ class MapsService {
         ));
 
         final encoded = Uri.encodeComponent(queries[i]);
-        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it';
+        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it&when=3m';
 
         final response = await http.get(Uri.parse(url), headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36',
@@ -444,7 +504,7 @@ class MapsService {
     for (final query in queries) {
       try {
         final encoded = Uri.encodeComponent(query);
-        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it';
+        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it&when=3m';
         final response = await http.get(Uri.parse(url), headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36',
         }).timeout(const Duration(seconds: 10));
@@ -478,7 +538,7 @@ class MapsService {
     for (final query in queries) {
       try {
         final encoded = Uri.encodeComponent(query);
-        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it';
+        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it&when=3m';
         final response = await http.get(Uri.parse(url), headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36',
         }).timeout(const Duration(seconds: 10));
@@ -515,7 +575,7 @@ class MapsService {
     for (final query in queries) {
       try {
         final encoded = Uri.encodeComponent(query);
-        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it';
+        final url = 'https://news.google.com/rss/search?q=$encoded&hl=it&gl=IT&ceid=IT:it&when=3m';
         final response = await http.get(Uri.parse(url), headers: {
           'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36',
         }).timeout(const Duration(seconds: 10));
@@ -539,12 +599,30 @@ class MapsService {
   ) async {
     final List<_RawLead> results = [];
 
-    // Query focalizzate su assunzioni prima dell'apertura (opportunità hot)
+    // Metodo 1: Scraping Diretto (Pillar 2) tramite HrScraperService (Migliore, in tempo reale)
+    try {
+      final hrResults = await HrScraperService.scrapeAllHrSources(province);
+      for (final hr in hrResults) {
+        // Converte il Map grezzo nel nostro formato interno _RawLead
+        results.add(_RawLead(
+          title: hr['title'] ?? 'Annuncio Lavoro $province',
+          url: hr['url'] ?? '',
+          description: hr['description'] ?? '',
+          sourceName: hr['sourceName'] ?? 'Portale Lavoro',
+          province: province,
+          sourceType: hr['sourceType'] ?? 'hr',
+          keywordScore: 200, // Highly relevant signal
+          publishDate: DateTime.now(), // Gli annunci estratti sono attivi oggi
+        ));
+      }
+    } catch (e) {
+      print('Errore HR Scraper: $e');
+    }
+
+    // Metodo 2: Google News RSS fallback (per query generiche HR)
     final queries = [
       '"cerchiamo personale" "nuova apertura" "$province" ${keywords.first}',
       '"assunzioni" "prossima apertura" "$province" ${keywords.first}',
-      'site:subito.it "camerieri" OR "commessi" "apertura" "$province"',
-      'site:it.indeed.com "nuova apertura" "$province" ${keywords.first}',
       'site:linkedin.com/jobs "store manager" "nuovo" "$province"',
     ];
 
@@ -557,7 +635,7 @@ class MapsService {
         }).timeout(const Duration(seconds: 10));
 
         if (response.statusCode == 200) {
-          results.addAll(_parseNewsRss(response.body, province, 'hiring'));
+          results.addAll(_parseNewsRss(response.body, province, 'hiring_news'));
         }
         await Future.delayed(const Duration(milliseconds: 500));
       } catch (_) { continue; }
@@ -765,6 +843,7 @@ class MapsService {
     final List<_RawLead> results = [];
     final itemRegex = RegExp(r'<item>(.*?)</item>', dotAll: true);
 
+    final now = DateTime.now();
     for (final item in itemRegex.allMatches(xml)) {
       final content = item.group(1) ?? '';
       final title = _cleanHtml(_extractTag(content, 'title'));
@@ -775,6 +854,11 @@ class MapsService {
 
       if (title.isEmpty) continue;
 
+      // FILTRO DATA: scarta articoli più vecchi di 90 giorni
+      DateTime? newsDate;
+      if (pubDate.isNotEmpty) newsDate = _parseRssDate(pubDate);
+      if (newsDate != null && now.difference(newsDate).inDays > 90) continue;
+
       final combined = '$title $description'.toLowerCase();
 
       // FILTRO RIGOROSO: deve contenere keyword di apertura
@@ -783,9 +867,6 @@ class MapsService {
 
       // FILTRO NEGATIVO: escludere chiusure, fallimenti, etc
       if (_containsExcludeKeyword(combined)) continue;
-
-      DateTime? newsDate;
-      if (pubDate.isNotEmpty) newsDate = _parseRssDate(pubDate);
 
       results.add(_RawLead(
         title: title.length > 120 ? '${title.substring(0, 117)}…' : title,
@@ -839,6 +920,12 @@ class MapsService {
 
   static int _countOpeningKeywords(String text) {
     return _openingKeywords.where((kw) => text.contains(kw)).length;
+  }
+
+  /// Converte stringhe 'null' da Gemini in vero null Dart
+  static String? _cleanNullStr(String? val) {
+    if (val == null || val.isEmpty || val == 'null' || val == 'undefined') return null;
+    return val;
   }
 
   static bool _containsExcludeKeyword(String text) {

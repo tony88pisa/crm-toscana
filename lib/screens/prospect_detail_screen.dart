@@ -373,14 +373,35 @@ class _ProspectDetailScreenState extends State<ProspectDetailScreen> {
         if (p.lastContactAt != null) _infoRow('Ultimo contatto', _formatDate(p.lastContactAt!)),
         if (p.estimatedOpenDate != null) _infoRow('Apertura stimata', _formatDate(p.estimatedOpenDate!)),
         _infoRow('ID Google', p.googlePlaceId ?? 'N/A'),
-        if (p.vatNumber != null && p.vatNumber!.isNotEmpty)
-          _infoRow('P.IVA/Rag. Soc.', p.vatNumber!),
-        if (p.ownerName != null && p.ownerName!.isNotEmpty)
-          _infoRow('Titolare/Referente', p.ownerName!),
-        if (p.extractedPhone != null && p.extractedPhone!.isNotEmpty)
-          _infoRow('Tel. Estratto', p.extractedPhone!),
-        if (p.email != null && p.email!.isNotEmpty)
-          _infoRow('Email Estratta', p.email!),
+        const SizedBox(height: 16),
+            _buildSectionTitle('Dati AI & Contatti (Beta)', Icons.auto_awesome),
+            const SizedBox(height: 8),
+
+            // NOME TITOLARE / REFERENTE
+            if (p.ownerName != null && p.ownerName!.isNotEmpty)
+              _infoCard('👤', 'Referente: ${p.ownerName!}', Colors.purple)
+            else
+              _buildMissingContactRow(
+                context,
+                title: 'Titolare non trovato',
+                icon: Icons.person_search,
+                searchQuery: '"${p.name}" "${p.address}" (titolare OR proprietario OR gestore)',
+              ),
+            
+            // NUMERO DI TELEFONO PROBABILE
+            if (p.extractedPhone != null && p.extractedPhone!.isNotEmpty)
+              _infoCard('📞', 'Tel. Estratto: ${p.extractedPhone!}', Colors.blue)
+            else
+              _buildMissingContactRow(
+                context,
+                title: 'Telefono non trovato',
+                icon: Icons.phone_android,
+                searchQuery: '"${p.name}" "${p.address}" telefono',
+              ),
+
+            // EMAIL
+            if (p.email != null && p.email!.isNotEmpty)
+              _infoCard('✉️', 'Email: ${p.email!}', Colors.orange),
       ],
     ));
   }
@@ -392,6 +413,54 @@ class _ProspectDetailScreenState extends State<ProspectDetailScreen> {
         SizedBox(width: 120, child: Text(label, style: const TextStyle(color: Colors.white24, fontSize: 11))),
         Expanded(child: Text(value, style: const TextStyle(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis)),
       ]),
+    );
+  }
+
+  Widget _buildMissingContactRow(BuildContext context, {required String title, required IconData icon, required String searchQuery}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2D3E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white54, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(title, style: const TextStyle(color: Colors.white54, fontSize: 13, fontStyle: FontStyle.italic))),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.05),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () => _launchGoogleSearch(searchQuery),
+            icon: const Icon(Icons.search, size: 16, color: Colors.blueAccent),
+            label: const Text('Cerca', style: TextStyle(color: Colors.blueAccent, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _launchGoogleSearch(String query) async {
+    final encodedQuery = Uri.encodeComponent(query);
+    final url = Uri.parse('https://www.google.com/search?q=$encodedQuery');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 18),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 

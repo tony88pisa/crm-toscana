@@ -56,4 +56,41 @@ class StorageService {
   static String? getUserName() => _prefs?.getString(_keyUserName);
   static String? getUserEmail() => _prefs?.getString(_keyUserEmail);
   static String? getUserAvatar() => _prefs?.getString(_keyUserAvatar);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // QUOTA MONITORING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static const String _keyTokensToday = 'tokens_today';
+  static const String _requestsToday = 'requests_today';
+  static const String _keyLastQuotaDate = 'last_quota_date';
+
+  static void _checkDayReset() {
+    final now = DateTime.now();
+    final today = "${now.year}-${now.month}-${now.day}";
+    final lastDate = _prefs?.getString(_keyLastQuotaDate) ?? '';
+
+    if (today != lastDate) {
+      _prefs?.setInt(_keyTokensToday, 0);
+      _prefs?.setInt(_requestsToday, 0);
+      _prefs?.setString(_keyLastQuotaDate, today);
+    }
+  }
+
+  static Future<void> recordUsage(int tokens) async {
+    _checkDayReset();
+    final currentTokens = _prefs?.getInt(_keyTokensToday) ?? 0;
+    final currentRequests = _prefs?.getInt(_requestsToday) ?? 0;
+    
+    await _prefs?.setInt(_keyTokensToday, currentTokens + tokens);
+    await _prefs?.setInt(_requestsToday, currentRequests + 1);
+  }
+
+  static Map<String, int> getQuotaStats() {
+    _checkDayReset();
+    return {
+      'tokens': _prefs?.getInt(_keyTokensToday) ?? 0,
+      'requests': _prefs?.getInt(_requestsToday) ?? 0,
+    };
+  }
 }
